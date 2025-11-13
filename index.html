@@ -86,6 +86,13 @@
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
+        .name-input:disabled {
+            background-color: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+            border-color: #ced4da;
+        }
+
         .submit-btn {
             width: 100%;
             padding: 14px;
@@ -109,6 +116,10 @@
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
+        }
+
+        .submit-btn.completed {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
         }
 
         .message {
@@ -135,6 +146,15 @@
             background-color: #d1ecf1;
             color: #0c5460;
             border: 1px solid #bee5eb;
+        }
+
+        .completed-message {
+            background-color: #d1edf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -167,6 +187,10 @@
         </form>
         
         <div id="message" class="message"></div>
+        <div id="completedMessage" class="completed-message" style="display: none;">
+            <strong>✅ Successfully Joined!</strong>
+            <p>You have already joined this session. The form is now locked.</p>
+        </div>
     </div>
 
     <script>
@@ -186,15 +210,32 @@
             } else {
                 sessionIdDisplay.textContent = 'Not found';
                 sessionIdDisplay.style.color = 'red';
-                document.getElementById('submitBtn').disabled = true;
+                disableForm();
             }
         }
 
-        // POST request পাঠানো - শুধুমাত্র player_name JSON এ
+        // Form disable করা
+        function disableForm() {
+            const nameInput = document.getElementById('name');
+            const submitBtn = document.getElementById('submitBtn');
+            const messageDiv = document.getElementById('message');
+            const completedMessage = document.getElementById('completedMessage');
+            
+            nameInput.disabled = true;
+            nameInput.placeholder = "Form completed - Already joined";
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Already Joined";
+            submitBtn.classList.add('completed');
+            
+            // Hide normal message and show completed message
+            messageDiv.style.display = 'none';
+            completedMessage.style.display = 'block';
+        }
+
+        // POST request পাঠানো
         async function submitToServer(sessionId, playerName) {
             const apiUrl = `https://billpaygame.mtscorporate.com/session_group/${sessionId}`;
             
-            // শুধুমাত্র player_name নিয়ে JSON object
             const requestData = {
                 member_name: playerName
             };
@@ -267,21 +308,24 @@
                 
                 if (result.success) {
                     showMessage(`Success! Welcome ${name}. You have joined the session.`, 'success');
-                    nameInput.value = '';
                     
-                    // Optional: Success পর automatically redirect
-                    setTimeout(() => {
-                        // window.location.href = '/success-page.html';
-                    }, 3000);
+                    // Form permanently disable করা
+                    disableForm();
+                    
+                    // LocalStorage এ save করা যে user already joined
+                    localStorage.setItem(`session_${sessionId}_joined`, 'true');
+                    localStorage.setItem(`session_${sessionId}_playerName`, name);
                     
                 } else {
                     showMessage(`Error: ${result.error}`, 'error');
+                    // Re-enable button on error
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Join Session';
                 }
                 
             } catch (error) {
                 showMessage('Network error. Please try again.', 'error');
-            } finally {
-                // Re-enable button
+                // Re-enable button on error
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Join Session';
             }
@@ -294,9 +338,26 @@
             messageDiv.style.display = 'block';
         }
 
+        // Check if user already joined this session
+        function checkIfAlreadyJoined() {
+            const sessionId = getSessionIdFromURL();
+            if (sessionId) {
+                const alreadyJoined = localStorage.getItem(`session_${sessionId}_joined`);
+                const playerName = localStorage.getItem(`session_${sessionId}_playerName`);
+                
+                if (alreadyJoined === 'true') {
+                    disableForm();
+                    // Show the saved player name in the disabled field
+                    document.getElementById('name').value = playerName || 'Already Joined';
+                    showMessage(`Welcome back! You have already joined this session as ${playerName}.`, 'success');
+                }
+            }
+        }
+
         // Page load এ session info display করা
         document.addEventListener('DOMContentLoaded', function() {
             displaySessionInfo();
+            checkIfAlreadyJoined();
         });
 
         // Real-time validation
