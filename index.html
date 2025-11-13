@@ -104,6 +104,13 @@
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
         }
 
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
         .message {
             margin-top: 20px;
             padding: 12px;
@@ -122,6 +129,12 @@
             background-color: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
         }
     </style>
 </head>
@@ -173,11 +186,47 @@
             } else {
                 sessionIdDisplay.textContent = 'Not found';
                 sessionIdDisplay.style.color = 'red';
+                document.getElementById('submitBtn').disabled = true;
+            }
+        }
+
+        // POST request পাঠানো - শুধুমাত্র player_name JSON এ
+        async function submitToServer(sessionId, playerName) {
+            const apiUrl = `https://billpaygame.mtscorporate.com/session_group/${sessionId}`;
+            
+            // শুধুমাত্র player_name নিয়ে JSON object
+            const requestData = {
+                player_name: playerName
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    body: JSON.stringify(requestData),
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                return { success: true, data: data };
+                
+            } catch (error) {
+                console.error('Error submitting data:', error);
+                return { 
+                    success: false, 
+                    error: error.message 
+                };
             }
         }
 
         // Form submission handle করা
-        document.getElementById('nameForm').addEventListener('submit', function(e) {
+        document.getElementById('nameForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const nameInput = document.getElementById('name');
@@ -210,31 +259,32 @@
             // Disable button during processing
             submitBtn.disabled = true;
             submitBtn.textContent = 'Joining Session...';
+            showMessage('Submitting your information...', 'loading');
             
-            // Simulate API call - এখানে আপনার actual API call হবে
-            setTimeout(() => {
-                // Data preparation for submission
-                const submissionData = {
-                    session_id: sessionId,
-                    player_name: name,
-                    timestamp: new Date().toISOString()
-                };
+            try {
+                // Server এ data submit করা
+                const result = await submitToServer(sessionId, name);
                 
-                console.log('Submission Data:', submissionData);
+                if (result.success) {
+                    showMessage(`Success! Welcome ${name}. You have joined the session.`, 'success');
+                    nameInput.value = '';
+                    
+                    // Optional: Success পর automatically redirect
+                    setTimeout(() => {
+                        // window.location.href = '/success-page.html';
+                    }, 3000);
+                    
+                } else {
+                    showMessage(`Error: ${result.error}`, 'error');
+                }
                 
-                // Success message
-                showMessage(`Welcome ${name}! You have successfully joined session ${sessionId}`, 'success');
-                
-                // Reset form
-                nameInput.value = '';
-                
-                // Re-enable button after 2 seconds
-                setTimeout(() => {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Join Session';
-                }, 2000);
-                
-            }, 1500);
+            } catch (error) {
+                showMessage('Network error. Please try again.', 'error');
+            } finally {
+                // Re-enable button
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Join Session';
+            }
         });
 
         function showMessage(text, type) {
@@ -252,7 +302,7 @@
         // Real-time validation
         document.getElementById('name').addEventListener('input', function() {
             const messageDiv = document.getElementById('message');
-            if (messageDiv.style.display === 'block') {
+            if (messageDiv.style.display === 'block' && !messageDiv.classList.contains('loading')) {
                 messageDiv.style.display = 'none';
             }
         });
