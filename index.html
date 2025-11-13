@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Name Submission</title>
+    <title>Bill Pay Game - Session Submission</title>
     <style>
         * {
             margin: 0;
@@ -27,12 +27,12 @@
             border-radius: 15px;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
             width: 100%;
-            max-width: 400px;
+            max-width: 450px;
             text-align: center;
         }
 
         .logo {
-            margin-bottom: 30px;
+            margin-bottom: 25px;
         }
 
         .logo h1 {
@@ -41,10 +41,19 @@
             font-weight: 600;
         }
 
-        .logo p {
-            color: #666;
-            margin-top: 8px;
-            font-size: 14px;
+        .session-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .session-id {
+            font-family: monospace;
+            font-weight: bold;
+            color: #667eea;
+            font-size: 16px;
         }
 
         .form-group {
@@ -77,10 +86,6 @@
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
-        .name-input::placeholder {
-            color: #999;
-        }
-
         .submit-btn {
             width: 100%;
             padding: 14px;
@@ -97,17 +102,6 @@
         .submit-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
-        }
-
-        .submit-btn:active {
-            transform: translateY(0);
-        }
-
-        .submit-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
         }
 
         .message {
@@ -129,28 +123,22 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
-
-        @media (max-width: 480px) {
-            .container {
-                padding: 30px 20px;
-            }
-            
-            .logo h1 {
-                font-size: 24px;
-            }
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="logo">
-            <h1>Welcome</h1>
-            <p>Please enter your name to continue</p>
+            <h1>Bill Pay Game</h1>
+            <p>Join Session</p>
+        </div>
+        
+        <div class="session-info">
+            <p>Session ID: <span id="sessionIdDisplay" class="session-id">Loading...</span></p>
         </div>
         
         <form id="nameForm">
             <div class="form-group">
-                <label for="name">Full Name</label>
+                <label for="name">Your Name</label>
                 <input 
                     type="text" 
                     id="name" 
@@ -161,7 +149,7 @@
             </div>
             
             <button type="submit" class="submit-btn" id="submitBtn">
-                Submit
+                Join Session
             </button>
         </form>
         
@@ -169,12 +157,33 @@
     </div>
 
     <script>
+        // URL থেকে session_id পড়া
+        function getSessionIdFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('session_id');
+        }
+
+        // Session ID display করা
+        function displaySessionInfo() {
+            const sessionId = getSessionIdFromURL();
+            const sessionIdDisplay = document.getElementById('sessionIdDisplay');
+            
+            if (sessionId) {
+                sessionIdDisplay.textContent = sessionId;
+            } else {
+                sessionIdDisplay.textContent = 'Not found';
+                sessionIdDisplay.style.color = 'red';
+            }
+        }
+
+        // Form submission handle করা
         document.getElementById('nameForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
             const nameInput = document.getElementById('name');
             const submitBtn = document.getElementById('submitBtn');
             const messageDiv = document.getElementById('message');
+            const sessionId = getSessionIdFromURL();
             
             const name = nameInput.value.trim();
             
@@ -192,24 +201,38 @@
                 showMessage('Name must be at least 2 characters long', 'error');
                 return;
             }
+
+            if (!sessionId) {
+                showMessage('Invalid session. Please scan the QR code again.', 'error');
+                return;
+            }
             
-            // Disable button during "processing"
+            // Disable button during processing
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting...';
+            submitBtn.textContent = 'Joining Session...';
             
-            // Simulate API call or form submission
+            // Simulate API call - এখানে আপনার actual API call হবে
             setTimeout(() => {
-                // Here you would typically send data to your server
-                console.log('Name submitted:', name);
+                // Data preparation for submission
+                const submissionData = {
+                    session_id: sessionId,
+                    player_name: name,
+                    timestamp: new Date().toISOString()
+                };
                 
-                showMessage(`Thank you, ${name}! Your submission was successful.`, 'success');
+                console.log('Submission Data:', submissionData);
+                
+                // Success message
+                showMessage(`Welcome ${name}! You have successfully joined session ${sessionId}`, 'success');
                 
                 // Reset form
                 nameInput.value = '';
                 
-                // Re-enable button
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Submit';
+                // Re-enable button after 2 seconds
+                setTimeout(() => {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Join Session';
+                }, 2000);
                 
             }, 1500);
         });
@@ -220,6 +243,11 @@
             messageDiv.className = `message ${type}`;
             messageDiv.style.display = 'block';
         }
+
+        // Page load এ session info display করা
+        document.addEventListener('DOMContentLoaded', function() {
+            displaySessionInfo();
+        });
 
         // Real-time validation
         document.getElementById('name').addEventListener('input', function() {
